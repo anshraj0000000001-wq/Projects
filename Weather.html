@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnshWeatherCast | Premium Experience</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
+        
+        :root {
+            --accent: #60a5fa;
+            --card-bg: rgba(255, 255, 255, 0.03);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #020617;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* --- Dynamic Animated Background --- */
+        .bg-glow {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% -20%, #1e1b4b, #020617);
+            z-index: -1;
+        }
+
+        /* --- Weather Specific Animations (Injected via JS) --- */
+        .weather-scene {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+
+        .active-scene { opacity: 1; }
+
+        /* Cloud Animation */
+        .cloud {
+            position: absolute;
+            background: white;
+            filter: blur(50px);
+            border-radius: 50%;
+            opacity: 0.1;
+            animation: drift linear infinite;
+        }
+
+        @keyframes drift {
+            from { transform: translateX(-100vw); }
+            to { transform: translateX(100vw); }
+        }
+
+        /* Rain Animation */
+        .rain-drop {
+            position: absolute;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.4));
+            width: 2px;
+            height: 80px;
+            animation: fall linear infinite;
+        }
+
+        @keyframes fall {
+            to { transform: translateY(100vh); }
+        }
+
+        /* --- UI Elements --- */
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.9);
+            position: relative;
+            z-index: 10;
+        }
+
+        .weather-art-container {
+            position: relative;
+            height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .weather-icon-main {
+            z-index: 20;
+            filter: drop-shadow(0 0 30px rgba(96, 165, 250, 0.5));
+            animation: float 5s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            opacity: 0;
+            transform: scale(0.9);
+        }
+
+        .reveal-stats .stat-card {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .loader {
+            border-top-color: var(--accent);
+            animation: spinner 0.8s linear infinite;
+        }
+
+        @keyframes spinner {
+            to { transform: rotate(360deg); }
+        }
+
+        .temp-gradient {
+            background: linear-gradient(to bottom, #fff 40%, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-10">
+    <!-- Global Visuals -->
+    <div class="bg-glow"></div>
+    <div id="weatherAnimationLayer" class="fixed inset-0 pointer-events-none"></div>
+
+    <div class="max-w-md w-full animate__animated animate__fadeIn">
+        <!-- Branding -->
+        <div class="text-center mb-10">
+            <div class="inline-block px-4 py-1 rounded-full border border-blue-500/20 bg-blue-500/10 mb-4">
+                <span class="text-[10px] font-bold tracking-[0.4em] uppercase text-blue-400">Atmospheric AI</span>
+            </div>
+            <h1 class="text-4xl font-black tracking-tighter italic">Ansh<span class="text-blue-500">WeatherCast</span></h1>
+        </div>
+
+        <!-- Search -->
+        <div class="relative mb-8 group">
+            <input 
+                type="text" 
+                id="cityInput" 
+                placeholder="Search city..." 
+                class="w-full bg-white/5 border border-white/10 rounded-[2rem] py-6 pl-8 pr-36 outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-lg"
+            >
+            <button 
+                id="searchBtn"
+                class="absolute right-2 top-2 bottom-2 bg-blue-600 hover:bg-blue-500 px-8 rounded-[1.8rem] transition-all font-bold active:scale-95 flex items-center gap-2"
+            >
+                <span id="btnText">Explore</span>
+                <div id="loader" class="hidden loader w-5 h-5 border-2 border-white/20 rounded-full"></div>
+            </button>
+        </div>
+
+        <!-- Result Dashboard -->
+        <div id="weatherCard" class="glass-card rounded-[3.5rem] p-8 md:p-10 hidden overflow-hidden">
+            <div class="relative z-10 text-center">
+                <div class="animate__animated animate__fadeInDown">
+                    <h2 id="cityName" class="text-3xl font-extrabold tracking-tighter">City</h2>
+                    <p id="countryName" class="text-white/30 text-[10px] font-bold tracking-[0.3em] uppercase mt-1">Country</p>
+                </div>
+
+                <!-- Animated Icon Area -->
+                <div class="weather-art-container">
+                    <div id="iconContainer"></div>
+                </div>
+
+                <!-- Temperature Section -->
+                <div class="flex flex-col items-center mb-8 animate__animated animate__zoomIn">
+                    <div class="flex items-start">
+                        <span id="temp" class="text-9xl font-black tracking-tighter leading-none temp-gradient">--</span>
+                        <span class="text-4xl font-light text-blue-400 mt-2">°</span>
+                    </div>
+                    <p id="description" class="text-xl font-bold text-white/60 capitalize mt-2 tracking-tight">Condition</p>
+                </div>
+
+                <!-- Grid -->
+                <div id="statsGrid" class="grid grid-cols-2 gap-3">
+                    <div class="stat-card rounded-[2rem] p-5">
+                        <p class="text-[9px] font-black text-white/20 uppercase mb-2 tracking-widest">Humidity</p>
+                        <span id="humidity" class="text-xl font-bold">--%</span>
+                    </div>
+                    <div class="stat-card rounded-[2rem] p-5">
+                        <p class="text-[9px] font-black text-white/20 uppercase mb-2 tracking-widest">Feels Like</p>
+                        <span id="feelsLike" class="text-xl font-bold">--°</span>
+                    </div>
+                    <div class="stat-card rounded-[2rem] p-5">
+                        <p class="text-[9px] font-black text-white/20 uppercase mb-2 tracking-widest">Wind</p>
+                        <span id="wind" class="text-xl font-bold">--</span>
+                    </div>
+                    <div class="stat-card rounded-[2rem] p-5">
+                        <p class="text-[9px] font-black text-white/20 uppercase mb-2 tracking-widest">Visibility</p>
+                        <span id="visibility" class="text-xl font-bold">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error -->
+        <div id="errorMessage" class="hidden animate__animated animate__shakeX mt-6 p-6 bg-red-500/10 border border-red-500/20 rounded-[2rem] text-center">
+            <p class="text-red-400 font-bold text-sm">Station Offline</p>
+        </div>
+    </div>
+
+    <script>
+        const apiKey = "wapi_f8cfceb053ac26086c31f743a1781e97e6118c56104a0c81";
+        
+        const cityInput = document.getElementById('cityInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const weatherCard = document.getElementById('weatherCard');
+        const statsGrid = document.getElementById('statsGrid');
+        const errorMessage = document.getElementById('errorMessage');
+        const loader = document.getElementById('loader');
+        const btnText = document.getElementById('btnText');
+        const animLayer = document.getElementById('weatherAnimationLayer');
+
+        async function fetchWeather() {
+            const city = cityInput.value.trim();
+            if (!city) return;
+
+            errorMessage.classList.add('hidden');
+            loader.classList.remove('hidden');
+            btnText.classList.add('hidden');
+            weatherCard.classList.add('hidden');
+            statsGrid.classList.remove('reveal-stats');
+            animLayer.innerHTML = ''; // Clear old animations
+            
+            try {
+                const url = `https://api.weatherai.io/v1/current?q=${encodeURIComponent(city)}&units=metric`;
+                const response = await fetch(url, {
+                    headers: { 'X-API-Key': apiKey }
+                });
+
+                if (!response.ok) throw new Error();
+                const data = await response.json();
+                updateUI(data);
+            } catch (err) {
+                errorMessage.classList.remove('hidden');
+            } finally {
+                loader.classList.add('hidden');
+                btnText.classList.remove('hidden');
+            }
+        }
+
+        function createWeatherAnimation(conditionText) {
+            animLayer.innerHTML = '';
+            const lowerCondition = conditionText.toLowerCase();
+            
+            if (lowerCondition.includes('cloud')) {
+                // Generate 8 drifting clouds
+                for(let i=0; i<8; i++) {
+                    const cloud = document.createElement('div');
+                    cloud.className = 'cloud';
+                    cloud.style.width = Math.random() * 300 + 200 + 'px';
+                    cloud.style.height = cloud.style.width;
+                    cloud.style.top = Math.random() * 100 + 'vh';
+                    cloud.style.animationDuration = Math.random() * 30 + 20 + 's';
+                    cloud.style.animationDelay = Math.random() * -20 + 's';
+                    animLayer.appendChild(cloud);
+                }
+            } else if (lowerCondition.includes('rain') || lowerCondition.includes('drizzle')) {
+                // Generate 50 falling rain drops
+                for(let i=0; i<50; i++) {
+                    const drop = document.createElement('div');
+                    drop.className = 'rain-drop';
+                    drop.style.left = Math.random() * 100 + 'vw';
+                    drop.style.animationDuration = Math.random() * 0.5 + 0.5 + 's';
+                    drop.style.animationDelay = Math.random() * 2 + 's';
+                    animLayer.appendChild(drop);
+                }
+            } else if (lowerCondition.includes('clear') || lowerCondition.includes('sun')) {
+                const sun = document.createElement('div');
+                sun.className = 'fixed top-[-10%] right-[-10%] w-[400px] h-[400px] bg-yellow-400/10 rounded-full blur-[100px] animate-pulse';
+                animLayer.appendChild(sun);
+            }
+        }
+
+        function updateUI(data) {
+            const { location, temperature, condition, wind, humidity, visibility } = data;
+
+            document.getElementById('cityName').textContent = location.name;
+            document.getElementById('countryName').textContent = location.country;
+            document.getElementById('temp').textContent = Math.round(temperature.celsius);
+            document.getElementById('feelsLike').textContent = Math.round(temperature.feelsLike.celsius) + "°";
+            document.getElementById('humidity').textContent = `${humidity}%`;
+            document.getElementById('wind').textContent = `${wind.kph} km/h`;
+            document.getElementById('visibility').textContent = `${visibility.km} km`;
+            document.getElementById('description').textContent = condition.text;
+
+            // Weather Icon
+            let iconUrl = condition.icon;
+            if (iconUrl.startsWith('//')) iconUrl = 'https:' + iconUrl;
+            document.getElementById('iconContainer').innerHTML = `
+                <img src="${iconUrl}" class="w-64 h-64 weather-icon-main">
+            `;
+
+            // Start background animations
+            createWeatherAnimation(condition.text);
+
+            weatherCard.classList.remove('hidden');
+            weatherCard.classList.add('animate__fadeInUp');
+            
+            setTimeout(() => {
+                statsGrid.classList.add('reveal-stats');
+            }, 400);
+        }
+
+        searchBtn.addEventListener('click', fetchWeather);
+        cityInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') fetchWeather(); });
+    </script>
+</body>
+</html>
+
+  
