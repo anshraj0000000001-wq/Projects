@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnshWeatherCast | Premium Experience</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
+        
+        :root {
+            --accent: #60a5fa;
+            --card-bg: rgba(255, 255, 255, 0.03);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #020617;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* --- Dynamic Backgrounds --- */
+        .bg-glow {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at 50% -20%, #1e1b4b, #020617);
+            z-index: -1;
+        }
+
+        /* --- Menu Styles --- */
+        .menu-dropdown {
+            position: absolute;
+            top: 60px;
+            right: 0;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+            padding: 0.5rem;
+            width: 180px;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
+        .menu-dropdown.active {
+            display: block;
+            animation: fadeInDown 0.3s ease-out forwards;
+        }
+
+        .menu-item {
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s;
+            color: rgba(255,255,255,0.7);
+            font-size: 0.9rem;
+        }
+
+        .menu-item:hover {
+            background: rgba(255,255,255,0.05);
+            color: white;
+        }
+
+        /* --- Slider Styles --- */
+        .slider-container {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            border-radius: 2rem;
+            overflow: hidden;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .slide {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: scale(1.1);
+        }
+
+        .slide.active {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .slide img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: brightness(0.6);
+        }
+
+        .slide-content {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            z-index: 5;
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid rgba(255,255,255,0.1);
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 20;
+        }
+        
+        .nav-btn.prev { left: 10px; }
+        .nav-btn.next { right: 10px; }
+
+        .dots-container {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 6px;
+            z-index: 10;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .dot.active {
+            background: var(--accent);
+            width: 18px;
+            border-radius: 10px;
+        }
+
+        /* --- UI Components --- */
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.9);
+            z-index: 10;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: 0.4s;
+            opacity: 0;
+            transform: scale(0.9);
+        }
+
+        .reveal-stats .stat-card { opacity: 1; transform: scale(1); }
+
+        .temp-gradient {
+            background: linear-gradient(to bottom, #fff 40%, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="p-4">
+    <div class="bg-glow"></div>
+    <div id="weatherAnimationLayer" class="fixed inset-0 pointer-events-none"></div>
+
+    <div class="max-w-md w-full animate__animated animate__fadeIn relative">
+        <!-- Header with Branding & Dots Menu -->
+        <div class="flex items-center justify-between mb-6 px-2">
+            <h1 class="text-2xl font-black tracking-tighter italic">Ansh<span class="text-blue-500">WeatherCast</span></h1>
+            
+            <div class="relative">
+                <button id="menuBtn" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 transition-colors">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                </button>
+                
+                <div id="menuDropdown" class="menu-dropdown">
+                    <a href="#" class="menu-item">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                        Home
+                    </a>
+                    <a href="https://weatherai.io/docs" target="_blank" class="menu-item">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                        Documentation
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Premium Slider -->
+        <div class="slider-container">
+            <div id="slides">
+                <div class="slide active">
+                    <img src="https://images.unsplash.com/photo-1504608524841-42fe6f032b4b?auto=format&fit=crop&w=800&q=80" alt="Storm">
+                    <div class="slide-content">
+                        <p class="text-[10px] font-bold tracking-widest uppercase text-blue-400">Extreme Alert</p>
+                        <h3 class="text-lg font-bold">Storm tracking active</h3>
+                    </div>
+                </div>
+                <div class="slide">
+                    <img src="https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=800&q=80" alt="Nature">
+                    <div class="slide-content">
+                        <p class="text-[10px] font-bold tracking-widest uppercase text-green-400">Global Coverage</p>
+                        <h3 class="text-lg font-bold">Nature-inspired insights</h3>
+                    </div>
+                </div>
+                <div class="slide">
+                    <img src="https://images.unsplash.com/photo-1493246507139-91e8bef99c02?auto=format&fit=crop&w=800&q=80" alt="Mountains">
+                    <div class="slide-content">
+                        <p class="text-[10px] font-bold tracking-widest uppercase text-orange-400">Alpine Forecast</p>
+                        <h3 class="text-lg font-bold">High altitude accuracy</h3>
+                    </div>
+                </div>
+                <div class="slide">
+                    <img src="https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?auto=format&fit=crop&w=800&q=80" alt="Starry Sky">
+                    <div class="slide-content">
+                        <p class="text-[10px] font-bold tracking-widest uppercase text-purple-400">Night Vision</p>
+                        <h3 class="text-lg font-bold">Celestial clarity tracking</h3>
+                    </div>
+                </div>
+                <div class="slide">
+                    <img src="https://images.unsplash.com/photo-1483664852095-d6cc6870702d?auto=format&fit=crop&w=800&q=80" alt="Cityscape">
+                    <div class="slide-content">
+                        <p class="text-[10px] font-bold tracking-widest uppercase text-red-400">Urban Climate</p>
+                        <h3 class="text-lg font-bold">Smart city integration</h3>
+                    </div>
+                </div>
+            </div>
+            
+            <button onclick="moveSlide(-1)" class="nav-btn prev">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <button onclick="moveSlide(1)" class="nav-btn next">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+
+            <div class="dots-container" id="dots"></div>
+        </div>
+
+        <!-- Search -->
+        <div class="relative mb-6 group">
+            <input type="text" id="cityInput" placeholder="Enter city..." class="w-full bg-white/5 border border-white/10 rounded-[1.8rem] py-5 pl-7 pr-32 outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-lg">
+            <button id="searchBtn" class="absolute right-2 top-2 bottom-2 bg-blue-600 hover:bg-blue-500 px-6 rounded-[1.4rem] transition-all font-bold flex items-center gap-2">
+                <span id="btnText">Go</span>
+                <div id="loader" class="hidden loader w-4 h-4 border-2 border-white/20 rounded-full"></div>
+            </button>
+        </div>
+
+        <!-- Result Dashboard -->
+        <div id="weatherCard" class="glass-card rounded-[3rem] p-8 hidden overflow-hidden">
+            <div class="relative z-10 text-center">
+                <h2 id="cityName" class="text-3xl font-extrabold tracking-tighter">City</h2>
+                <div id="iconContainer" class="h-40 flex items-center justify-center"></div>
+                
+                <div class="flex flex-col items-center mb-6">
+                    <div class="flex items-start">
+                        <span id="temp" class="text-8xl font-black tracking-tighter leading-none temp-gradient">--</span>
+                        <span class="text-3xl font-light text-blue-400 mt-1">°</span>
+                    </div>
+                    <p id="description" class="text-lg font-bold text-white/50 capitalize">Condition</p>
+                </div>
+
+                <div id="statsGrid" class="grid grid-cols-2 gap-3">
+                    <div class="stat-card rounded-3xl p-4">
+                        <p class="text-[9px] font-black text-white/20 uppercase mb-1 tracking-widest">Humidity</p>
+                        <span id="humidity" class="text-lg font-bold">--%</span>
+                    </div>
+                    <div class="stat-card rounded-3xl p-4">
+                        <p class="text-[9px] font-black text-white/20 uppercase mb-1 tracking-widest">Wind</p>
+                        <span id="wind" class="text-lg font-bold">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const apiKey = "wapi_f8cfceb053ac26086c31f743a1781e97e6118c56104a0c81";
+        
+        /* Menu Logic */
+        const menuBtn = document.getElementById('menuBtn');
+        const menuDropdown = document.getElementById('menuDropdown');
+
+        menuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menuDropdown.classList.toggle('active');
+        });
+
+        document.addEventListener('click', () => {
+            menuDropdown.classList.remove('active');
+        });
+
+        /* Slider Logic */
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const dotsContainer = document.getElementById('dots');
+
+        slides.forEach((_, i) => {
+            const dot = document.createElement('div');
+            dot.className = `dot ${i === 0 ? 'active' : ''}`;
+            dot.onclick = () => { currentSlide = i; updateSlider(); resetInterval(); };
+            dotsContainer.appendChild(dot);
+        });
+
+        function updateSlider() {
+            slides.forEach((s, i) => s.classList.toggle('active', i === currentSlide));
+            document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === currentSlide));
+        }
+
+        function moveSlide(step) {
+            currentSlide = (currentSlide + step + slides.length) % slides.length;
+            updateSlider();
+            resetInterval();
+        }
+
+        let slideInterval = setInterval(() => {
+            currentSlide = (currentSlide + 1) % slides.length;
+            updateSlider();
+        }, 3000);
+
+        function resetInterval() {
+            clearInterval(slideInterval);
+            slideInterval = setInterval(() => {
+                currentSlide = (currentSlide + 1) % slides.length;
+                updateSlider();
+            }, 3000);
+        }
+
+        /* Weather Logic */
+        const cityInput = document.getElementById('cityInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const weatherCard = document.getElementById('weatherCard');
+
+        async function fetchWeather() {
+            const city = cityInput.value.trim();
+            if (!city) return;
+
+            document.getElementById('loader').classList.remove('hidden');
+            document.getElementById('btnText').classList.add('hidden');
+            
+            try {
+                const url = `https://api.weatherai.io/v1/current?q=${encodeURIComponent(city)}&units=metric`;
+                const response = await fetch(url, { headers: { 'X-API-Key': apiKey }});
+                if (!response.ok) throw new Error();
+                const data = await response.json();
+                updateUI(data);
+            } catch (err) {
+                console.log("Error fetching weather");
+            } finally {
+                document.getElementById('loader').classList.add('hidden');
+                document.getElementById('btnText').classList.remove('hidden');
+            }
+        }
+
+        function updateUI(data) {
+            const { location, temperature, condition, wind, humidity } = data;
+            document.getElementById('cityName').textContent = location.name;
+            document.getElementById('temp').textContent = Math.round(temperature.celsius);
+            document.getElementById('humidity').textContent = `${humidity}%`;
+            document.getElementById('wind').textContent = `${wind.kph} km/h`;
+            document.getElementById('description').textContent = condition.text;
+
+            let iconUrl = condition.icon.startsWith('//') ? 'https:' + condition.icon : condition.icon;
+            document.getElementById('iconContainer').innerHTML = `<img src="${iconUrl}" class="w-32 h-32 animate__animated animate__zoomIn">`;
+
+            weatherCard.classList.remove('hidden');
+            document.getElementById('statsGrid').classList.add('reveal-stats');
+        }
+
+        searchBtn.addEventListener('click', fetchWeather);
+        cityInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') fetchWeather(); });
+    </script>
+</body>
+</html>
+
