@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Content Updater</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: background-color 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex items-center justify-center p-4">
+
+    <main class="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border border-slate-100">
+        <!-- 1. Heading -->
+        <header class="mb-6">
+            <h1 class="text-3xl font-bold text-slate-800 tracking-tight">
+                DOM Interaction Task
+            </h1>
+            <p class="text-slate-500 mt-2">Enter text below to update the display paragraph.</p>
+        </header>
+
+        <!-- 2. Target Paragraph -->
+        <section class="mb-8 p-4 bg-slate-100 rounded-lg min-h-[60px] flex items-center justify-center border-2 border-dashed border-slate-200">
+            <p id="displayParagraph" class="text-lg text-slate-700 font-medium text-center italic">
+                Your text will appear here...
+            </p>
+        </section>
+
+        <!-- 3. Input and Button -->
+        <div class="space-y-4">
+            <div>
+                <label for="userInput" class="block text-sm font-semibold text-slate-600 mb-1">Enter Message:</label>
+                <input 
+                    type="text" 
+                    id="userInput" 
+                    placeholder="Type something..." 
+                    class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                >
+            </div>
+            
+            <button 
+                id="updateBtn" 
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform active:scale-95 transition-all flex items-center justify-center gap-2"
+            >
+                <span>Update Paragraph</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </button>
+        </div>
+    </main>
+
+    <script>
+        /**
+         * Wait for the DOM to be fully loaded before running script
+         */
+        window.addEventListener('DOMContentLoaded', () => {
+            
+            // 2. Selecting HTML elements using DOM methods
+            const displayParagraph = document.getElementById('displayParagraph');
+            const userInput = document.getElementById('userInput');
+            const updateBtn = document.querySelector('#updateBtn');
+
+            /**
+             * 3. Handling user events
+             * Function to update the text content based on input
+             */
+            const handleUpdate = () => {
+                const textValue = userInput.value.trim();
+
+                if (textValue !== "") {
+                    // 4. Modifying the webpage content dynamically
+                    displayParagraph.textContent = textValue;
+                    
+                    // Clear the input for better UX
+                    userInput.value = "";
+                    userInput.focus();
+
+                    // Optional visual feedback
+                    displayParagraph.classList.remove('italic', 'text-slate-500');
+                    displayParagraph.classList.add('text-blue-600', 'font-bold');
+                } else {
+                    // Simple logic for empty input
+                    displayParagraph.textContent = "Please enter some text first!";
+                    displayParagraph.classList.add('text-red-500');
+                }
+            };
+
+            // Event Listener for Click
+            updateBtn.addEventListener('click', handleUpdate);
+
+            // Also allow "Enter" key for better accessibility/UX
+            userInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    handleUpdate();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
